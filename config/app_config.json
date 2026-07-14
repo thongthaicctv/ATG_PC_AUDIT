@@ -1,0 +1,16 @@
+{
+  "app_name": "ATG PC AUDIT",
+  "phase": 7,
+  "result_directory": "KetQuaKiemTra",
+  "language": "vi-VN",
+  "app_version": "1.0.0",
+  "auto_export_csv": true,
+  "license": {
+    "api_url": "https://docs.google.com/spreadsheets/d/1f5GaVe2Ogw5NCYAhAvVCB9HINhPptqRf3a2oJpni8II/gviz/tq?tqx=out:json&sheet=Sheet1",
+    "product_code": "ATG_PC_AUDIT",
+    "feature_code": "AGGREGATE",
+    "request_timeout_seconds": 15,
+    "offline_grace_days": 30,
+    "refresh_hours": 12
+  }
+}

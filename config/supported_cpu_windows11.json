@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-07-14",
+  "intel": ["i5-8250U"],
+  "amd": [],
+  "qualcomm": [],
+  "note": "Danh sách khởi tạo có thể cập nhật độc lập. CPU không có trong dữ liệu không được tự động kết luận đạt."
+}
