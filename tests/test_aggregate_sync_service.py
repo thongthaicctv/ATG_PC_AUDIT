@@ -30,5 +30,16 @@ class AggregateSyncTests(unittest.TestCase):
             self.assertEqual([x["asset_code"] for x in db.current_records()],["PC-SNAPSHOT"])
             self.assertEqual(AggregateSyncService(db,SnapshotClient(),lambda:{}).state()["last_change_seq"],6)
 
+    def test_sync_fetches_gpu_detail_and_creates_usage_history(self):
+        class DetailClient(FakeClient):
+            def get_audit_detail(self,auth,audit_id):
+                return ApiResult(True,"AUDIT_DETAIL","OK",{"gpus":[{"name":"Intel Iris Xe","driver_version":"31.0","adapter_ram_gb":2,"is_active":True}],"ram":[],"disks":[],"network_adapters":[{"adapter_name":"Ethernet","ipv4":"192.168.1.10","prefix_length":None,"gateway":None,"dns_servers":None}],"windows_license":[],"office_licenses":[],"windows11_checks":[]})
+        with tempfile.TemporaryDirectory() as tmp:
+            db=AggregateDatabase(Path(tmp)/"db.sqlite");AggregateSyncService(db,DetailClient(),lambda:{}).sync()
+            record=db.current_records()[0]
+            self.assertEqual(record["gpu_summary"],"Intel Iris Xe")
+            self.assertIn("Intel Iris Xe",record["gpu_details_json"])
+            self.assertEqual(len(db.usage_history(record["machine_id"])),1)
+
 
 if __name__=="__main__":unittest.main()

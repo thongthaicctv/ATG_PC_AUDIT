@@ -30,7 +30,8 @@ class AggregateSyncService:
         summary=self.client.sync_summary(self.auth_factory(),cursor)
         if not summary.success:self._error(started,cursor,summary);return summary
         latest=int(summary.data.get("latest_change_seq") or cursor)
-        if summary.code=="UP_TO_DATE":self._complete(started,state.get("last_change_seq",0),cursor,count,summary);return summary
+        if summary.code=="UP_TO_DATE":
+            self._sync_pending_details(progress);self._complete(started,state.get("last_change_seq",0),cursor,count,summary);return summary
         try:
             while cursor<latest:
                 page=self.client.sync_changes(self.auth_factory(),cursor,self.page_size)
@@ -44,7 +45,7 @@ class AggregateSyncService:
                     con.execute("UPDATE sync_state SET last_change_seq=?,latest_change_seq=?,last_server_time=? WHERE id=1",(new_cursor,latest,page.server_time));con.commit();cursor=new_cursor
                 if progress:progress(cursor,latest)
                 if not page.data.get("has_more"):break
-            self._complete(started,state.get("last_change_seq",0),cursor,count,summary);return summary
+            self._sync_pending_details(progress);self._complete(started,state.get("last_change_seq",0),cursor,count,summary);return summary
         except Exception as exc:
             with self.db.connect() as con:con.execute("UPDATE sync_state SET last_error_code='SYNC_FAILED',last_error_message=? WHERE id=1",(str(exc)[:500],));con.execute("INSERT INTO sync_log(started_at,completed_at,result,from_change_seq,to_change_seq,record_count,error_code,message) VALUES(?,?,?,?,?,?,?,?)",(started,datetime.now().isoformat(timespec="seconds"),"FAILED",state.get("last_change_seq",0),cursor,count,"SYNC_FAILED",str(exc)[:500]))
             raise
@@ -77,6 +78,16 @@ class AggregateSyncService:
             con.execute("UPDATE machines SET current_audit_id=?,detail_synced=0 WHERE id=?",(audit_row,machine_id))
             self.db._record_usage_history(con,machine_id,audit_row,raw,"SYNC")
         if raw.get("employee_code"):con.execute("INSERT INTO employees(employee_code,assigned_user,department,updated_at) VALUES(?,?,?,?) ON CONFLICT(employee_code) DO UPDATE SET assigned_user=excluded.assigned_user,department=excluded.department,updated_at=excluded.updated_at",(raw.get("employee_code"),raw.get("assigned_user"),raw.get("department"),now))
+    def _sync_pending_details(self,progress=None):
+        if not hasattr(self.client,"get_audit_detail"):return 0
+        with self.db.connect() as con:
+            pending=[dict(x) for x in con.execute("SELECT m.id machine_id,a.id audit_row_id,a.audit_id FROM machines m JOIN audits a ON a.id=m.current_audit_id WHERE m.is_active=1 AND coalesce(m.detail_synced,0)=0 AND a.audit_id IS NOT NULL")]
+        done=0
+        for item in pending:
+            result=self.client.get_audit_detail(self.auth_factory(),item["audit_id"])
+            if result.success and self.db.apply_synced_detail(item["audit_row_id"],item["machine_id"],result.data or {}):done+=1
+            if progress:progress(done,len(pending))
+        return done
     def _complete(self,started,old,cursor,count,result):
         done=datetime.now().isoformat(timespec="seconds")
         with self.db.connect() as con:con.execute("UPDATE sync_state SET last_sync_completed_at=?,latest_change_seq=?,last_server_time=?,last_error_code='',last_error_message='' WHERE id=1",(done,int(result.data.get("latest_change_seq") or cursor),result.server_time));con.execute("INSERT INTO sync_log(started_at,completed_at,result,from_change_seq,to_change_seq,record_count,message) VALUES(?,?,?,?,?,?,?)",(started,done,"SUCCESS",old,cursor,count,result.message));con.commit()

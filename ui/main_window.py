@@ -38,7 +38,7 @@ class MainWindow(QMainWindow):
         try:self.sync_service=SyncService()
         except Exception:self.sync_service=None
         self.last_result = None
-        self.setWindowTitle("ATG PC CHECK – Kiểm tra máy tính và quy hoạch IP") # đổi tên đơn vị sử dụng
+        self.setWindowTitle("TCR PC CHECK – Kiểm tra máy tính và quy hoạch IP") # đổi tên đơn vị sử dụng
         self.setWindowIcon(QIcon(str(resource_path("assets/app.ico"))))
         self.setMinimumSize(960, 640)
         self.resize(1200, 720)
@@ -57,7 +57,7 @@ class MainWindow(QMainWindow):
         logo.setFixedSize(54, 54)
         logo.setPixmap(QPixmap(str(resource_path("assets/logo.png"))).scaled(52, 52, Qt.KeepAspectRatio, Qt.SmoothTransformation))
         brand_text = QVBoxLayout()
-        brand_title = QLabel("ATG PC CHECK") # đổi tên đơn vị sử dụng
+        brand_title = QLabel("TCR PC CHECK") # đổi tên đơn vị sử dụng
         brand_title.setStyleSheet("font-size:20px;font-weight:700;color:#12376b")
         brand_subtitle = QLabel("Kiểm tra máy tính • Quy hoạch IP • Tổng hợp tài sản CNTT • Hỗ trợ trực tiếp Zalo 0904143113") # đổi tên đơn vị sử dụng
         brand_subtitle.setStyleSheet("color:#d00000; font-size:12px; font-weight:700;")

@@ -119,8 +119,12 @@ CREATE INDEX IF NOT EXISTS idx_usage_machine_sequence ON machine_usage_history(m
         note="Phần cứng thay đổi: "+"; ".join(f"{x['label']}: {x['old'] or '-'} → {x['new'] or '-'}" for x in changes) if changes else ("Ghi nhận người sử dụng đầu tiên" if sequence==1 else "Điều chuyển người sử dụng; phần cứng không thay đổi")
         con.execute("INSERT INTO machine_usage_history(machine_id,sequence_no,audit_row_id,assigned_user,employee_code,department,location,started_at,hardware_changes_json,hardware_snapshot_json,note,source,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",(machine_id,sequence,audit_row_id,record.get("assigned_user"),record.get("employee_code"),record.get("department"),record.get("location"),started,json.dumps(changes,ensure_ascii=False),json.dumps(snapshot,ensure_ascii=False),note,source,now))
     def _backfill_usage_history(self,con):
-        if con.execute("SELECT COUNT(*) FROM machine_usage_history").fetchone()[0]:return
-        for audit in con.execute("SELECT id,machine_id,full_record_json FROM audits ORDER BY machine_id,audit_time_iso,id").fetchall():
+        # Bổ sung lịch sử cho từng máy còn thiếu. Không dừng toàn bộ chỉ vì
+        # database đã có lịch sử của một máy khác.
+        sql="""SELECT a.id,a.machine_id,a.full_record_json FROM audits a
+               WHERE NOT EXISTS(SELECT 1 FROM machine_usage_history h WHERE h.machine_id=a.machine_id)
+               ORDER BY a.machine_id,a.audit_time_iso,a.id"""
+        for audit in con.execute(sql).fetchall():
             try:record=json.loads(audit["full_record_json"] or "{}")
             except Exception:continue
             self._record_usage_history(con,audit["machine_id"],audit["id"],record,"MIGRATION")
@@ -147,6 +151,27 @@ CREATE INDEX IF NOT EXISTS idx_usage_machine_sequence ON machine_usage_history(m
             elif index:row["note"]="Điều chuyển/nghiệm thu lần tiếp theo; phần cứng không thay đổi"
             previous=snapshot
         return rows
+    def apply_synced_detail(self,audit_row_id,machine_id,detail):
+        mapping={"ram":"ram_details_json","disks":"disks_details_json","gpus":"gpu_details_json","network_adapters":"network_adapters_json","office_licenses":"office_license_details_json","windows11_checks":"win11_checks_json"}
+        with self.connect() as con:
+            row=con.execute("SELECT full_record_json FROM audits WHERE id=? AND machine_id=?",(audit_row_id,machine_id)).fetchone()
+            if not row:return False
+            try:record=json.loads(row[0] or "{}")
+            except Exception:record={}
+            for source,target in mapping.items():record[target]=json.dumps(detail.get(source) or [],ensure_ascii=False)
+            windows=detail.get("windows_license") or []
+            record["windows_license_details_json"]=json.dumps(windows,ensure_ascii=False)
+            gpus=detail.get("gpus") or []
+            record["gpu_summary"]="; ".join(str(x.get("name") or "").strip() for x in gpus if x.get("name"))
+            for table in ("network_interfaces","disks","ram_modules","windows_licenses","office_licenses","gpus","win11_checks"):
+                con.execute(f"DELETE FROM {table} WHERE audit_row_id=?",(audit_row_id,))
+            self._details(con,audit_row_id,record)
+            for i,x in enumerate(gpus):con.execute("INSERT INTO gpus(audit_row_id,gpu_index,name,driver_version,adapter_ram,status) VALUES(?,?,?,?,?,?)",(audit_row_id,x.get("gpu_index",i),x.get("name"),x.get("driver_version"),x.get("adapter_ram_gb") or x.get("adapter_ram"),x.get("status") or ("Đang sử dụng" if x.get("is_active") else "")))
+            con.execute("UPDATE audits SET full_record_json=? WHERE id=?",(json.dumps(record,ensure_ascii=False),audit_row_id))
+            con.execute("UPDATE machines SET detail_synced=1 WHERE id=?",(machine_id,))
+            snapshot=json.dumps(self._hardware_snapshot(record),ensure_ascii=False)
+            con.execute("UPDATE machine_usage_history SET hardware_snapshot_json=? WHERE audit_row_id=?",(snapshot,audit_row_id))
+            con.commit();return True
     def deactivate_machine(self,machine_id):
         with self.connect() as con:
             cur=con.execute("UPDATE machines SET is_active=0,updated_at=? WHERE id=? AND is_active=1",(datetime.now().isoformat(timespec="seconds"),machine_id));con.commit();return cur.rowcount
@@ -154,8 +179,12 @@ CREATE INDEX IF NOT EXISTS idx_usage_machine_sequence ON machine_usage_history(m
         def js(key):
             try:return json.loads(r.get(key) or "[]")
             except Exception:return []
+        def joined(value):
+            if value is None:return ""
+            if isinstance(value,(list,tuple,set)):return ", ".join(str(x) for x in value if x is not None)
+            return str(value)
         primary=r.get("primary_mac")
-        for x in js("network_adapters_json"):con.execute("INSERT INTO network_interfaces(audit_row_id,adapter_name,adapter_type,physical_adapter,mac_address,ipv4,prefix_length,gateway,dns_servers,dhcp_enabled,is_primary) VALUES(?,?,?,?,?,?,?,?,?,?,?)",(audit_id,x.get("name"),x.get("interface_type"),int(bool(x.get("physical_adapter"))),x.get("mac_address"),", ".join(x.get("ipv4",[])),", ".join(x.get("prefix_or_mask",[])),", ".join(x.get("default_gateway",[])),", ".join(x.get("dns_servers",[])),x.get("dhcp_enabled"),int(x.get("mac_address")==primary)))
+        for x in js("network_adapters_json"):con.execute("INSERT INTO network_interfaces(audit_row_id,adapter_name,adapter_type,physical_adapter,mac_address,ipv4,prefix_length,gateway,dns_servers,dhcp_enabled,is_primary) VALUES(?,?,?,?,?,?,?,?,?,?,?)",(audit_id,x.get("name") or x.get("adapter_name"),x.get("interface_type") or x.get("adapter_type"),int(bool(x.get("physical_adapter"))),x.get("mac_address"),joined(x.get("ipv4")),joined(x.get("prefix_or_mask") if x.get("prefix_or_mask") is not None else x.get("prefix_length")),joined(x.get("default_gateway") if x.get("default_gateway") is not None else x.get("gateway")),joined(x.get("dns_servers")),x.get("dhcp_enabled"),int(x.get("mac_address")==primary)))
         for x in js("disks_details_json"):con.execute("INSERT INTO disks(audit_row_id,disk_index,model,serial_number,media_type,bus_type,partition_style,size_gb,is_system_disk) VALUES(?,?,?,?,?,?,?,?,?)",(audit_id,x.get("disk_index"),x.get("model"),x.get("serial_number"),x.get("disk_type") or x.get("media_type"),x.get("bus_type"),x.get("partition_style"),x.get("capacity_gb"),int(bool(x.get("is_system")))))
         for x in js("ram_details_json"):con.execute("INSERT INTO ram_modules(audit_row_id,slot,bank,capacity_gb,speed_mhz,manufacturer,part_number,serial_number) VALUES(?,?,?,?,?,?,?,?)",(audit_id,x.get("slot"),x.get("bank"),x.get("capacity_gb"),x.get("speed_mhz"),x.get("manufacturer"),x.get("part_number"),x.get("serial_number")))
         con.execute("INSERT INTO windows_licenses(audit_row_id,license_name,activation_status,license_type,license_channel,partial_key,expiration) VALUES(?,?,?,?,?,?,?)",(audit_id,r.get("windows_license_name"),r.get("windows_activation_status"),r.get("windows_license_type"),r.get("windows_license_channel"),r.get("windows_partial_key"),r.get("windows_expiration")))
