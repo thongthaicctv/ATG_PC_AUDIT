@@ -1,9 +1,9 @@
 import logging
-from pathlib import Path
+from core.storage_path_manager import active_storage
 
 
 def configure_logging() -> None:
-    log_dir = Path.home() / "ATG_PC_AUDIT" / "logs"
+    log_dir = active_storage().logs_path
     log_dir.mkdir(parents=True, exist_ok=True)
     logging.basicConfig(
         level=logging.INFO,

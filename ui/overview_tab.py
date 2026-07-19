@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import QFormLayout, QLabel, QWidget
 
 class OverviewTab(QWidget):
     FIELDS = [
-        ("computer_name", "Tên máy"), ("asset_code", "Mã tài sản"),
+        ("computer_name", "Tên máy"), ("asset_code", "Loại máy tính"),("assigned_user","Người sử dụng"),("employee_code","Mã nhân viên"),("department","Phòng ban"),("location","Vị trí làm việc"),("auditor","Người thực hiện cập nhật"),
         ("windows_user", "Người sử dụng Windows"), ("manufacturer", "Hãng máy"),
         ("model", "Model"), ("serial_number", "Serial Number"),
         ("windows", "Windows đang sử dụng"), ("ram", "Tổng RAM"),
@@ -27,6 +27,7 @@ class OverviewTab(QWidget):
         c = result.computer
         values = dict(c)
         values["asset_code"] = result.metadata.get("asset_code") or "Chưa nhập"
+        values["assigned_user"]=result.metadata.get("user") or "Chưa nhập";values["employee_code"]=result.metadata.get("employee_code") or "Chưa nhập";values["department"]=result.metadata.get("department") or "Chưa nhập";values["location"]=result.metadata.get("location") or "Chưa nhập";values["auditor"]=result.metadata.get("auditor") or "Chưa nhập"
         values["windows"] = f"{result.windows.get('edition', 'Không xác định')} (Build {result.windows.get('build_number', '?')})"
         values["ram"] = f"{result.ram_summary.get('total_gb', '?')} GB"
         values["tpm"] = f"Present={result.security.get('tpm_present')}, Version={result.security.get('tpm_spec_version')}"

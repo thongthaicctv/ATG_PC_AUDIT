@@ -25,6 +25,11 @@ class HardwareTab(QWidget):
         self.disks.setHorizontalHeaderLabels(["Index", "Model", "Serial", "Bus", "Media", "Loại", "MBR/GPT", "Dung lượng GB", "Trạng thái"])
         self.disks.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.disks.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.gpu = QTableWidget(0, 9)
+        self.gpu.setHorizontalHeaderLabels(["STT", "Tên card đồ họa", "Bộ xử lý", "VRAM GB", "Driver", "Ngày driver", "Độ phân giải", "Trạng thái", "Đang sử dụng"])
+        self.gpu.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.gpu.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        self.gpu.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.network = QTableWidget(0, 7)
         self.network.setHorizontalHeaderLabels(["Card mạng", "Loại", "Kết nối", "MAC Address", "IPv4", "Gateway", "Card chính"])
         self.network.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
@@ -34,6 +39,7 @@ class HardwareTab(QWidget):
         tabs.addTab(self.ram, "RAM")
         tabs.addTab(self.bios, "BIOS & Mainboard")
         tabs.addTab(self.disks, "Ổ đĩa")
+        tabs.addTab(self.gpu, "Card đồ họa")
         tabs.addTab(self.network, "Card mạng")
         layout.addWidget(tabs)
 
@@ -58,6 +64,13 @@ class HardwareTab(QWidget):
         for row, disk in enumerate(result.disks):
             for col, key in enumerate(disk_keys):
                 self.disks.setItem(row, col, QTableWidgetItem(str(disk.get(key, "Không xác định"))))
+        gpu_keys = ["gpu_index", "name", "video_processor", "adapter_ram_gb", "driver_version", "driver_date", "resolution", "status"]
+        self.gpu.setRowCount(len(result.gpu))
+        for row, gpu in enumerate(result.gpu):
+            for col, key in enumerate(gpu_keys):
+                value = row + 1 if key == "gpu_index" else gpu.get(key, "Không xác định")
+                self.gpu.setItem(row, col, QTableWidgetItem(str(value)))
+            self.gpu.setItem(row, 8, QTableWidgetItem("Có" if gpu.get("is_active") else ""))
         self.network.setRowCount(len(result.network_adapters))
         network_keys = ["name", "interface_type", "connection_status", "mac_address", "ipv4", "default_gateway"]
         for row, adapter in enumerate(result.network_adapters):

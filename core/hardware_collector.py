@@ -112,6 +112,37 @@ def collect_bios() -> Dict[str, Any]:
     }
 
 
+def collect_gpu() -> List[Dict[str, Any]]:
+    fields = ["Name", "VideoProcessor", "AdapterRAM", "DriverVersion", "DriverDate",
+              "VideoModeDescription", "CurrentHorizontalResolution", "CurrentVerticalResolution",
+              "Status", "Availability", "PNPDeviceID"]
+    try:
+        rows = _wmi_rows("Win32_VideoController", fields)
+    except RuntimeError:
+        rows = []
+    result = []
+    for index, row in enumerate(rows):
+        width = int(row.get("CurrentHorizontalResolution") or 0)
+        height = int(row.get("CurrentVerticalResolution") or 0)
+        status = str(row.get("Status") or "Không xác định")
+        ram = int(row.get("AdapterRAM") or 0)
+        result.append({
+            "gpu_index": index,
+            "name": row.get("Name") or "Không xác định",
+            "video_processor": row.get("VideoProcessor") or "Không xác định",
+            "adapter_ram_gb": round(ram / 1024**3, 2) if ram else "Không xác định",
+            "adapter_ram": ram,
+            "driver_version": row.get("DriverVersion") or "Không xác định",
+            "driver_date": str(row.get("DriverDate") or "Không xác định")[:8],
+            "video_mode": row.get("VideoModeDescription") or (f"{width} x {height}" if width and height else "Không xác định"),
+            "resolution": f"{width} x {height}" if width and height else "Không xác định",
+            "status": status,
+            "is_active": bool(width and height and status.upper() == "OK"),
+            "pnp_device_id": row.get("PNPDeviceID") or "Không xác định",
+        })
+    return result
+
+
 def _powershell_json(script: str):
     flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
     completed = subprocess.run(
@@ -127,9 +158,17 @@ def _powershell_json(script: str):
 
 def collect_disks() -> List[Dict[str, Any]]:
     script = r"""
+$systemDisk = $null
+try {$systemDisk = (Get-Partition -DriveLetter C -ErrorAction Stop | Select-Object -First 1).DiskNumber} catch {}
+if ($null -eq $systemDisk) {
+  try {
+    $logical = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'" -ErrorAction Stop
+    $partition = Get-CimAssociatedInstance -InputObject $logical -Association Win32_LogicalDiskToPartition -ErrorAction Stop | Select-Object -First 1
+    if ($partition) {$systemDisk = $partition.DiskIndex}
+  } catch {}
+}
 $rows = Get-CimInstance Win32_DiskDrive | ForEach-Object {
   $d = $_; $gd = Get-Disk -Number $d.Index -ErrorAction SilentlyContinue
-  $systemDisk = (Get-Partition -DriveLetter C -ErrorAction SilentlyContinue).DiskNumber
   [pscustomobject]@{Index=$d.Index;Model=$d.Model;SerialNumber=$d.SerialNumber;
     BusType=if($gd){[string]$gd.BusType}else{$d.InterfaceType};
     MediaType=if($gd){[string]$gd.MediaType}else{$d.MediaType};

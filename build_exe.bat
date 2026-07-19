@@ -16,6 +16,13 @@ C:\Python310\python.exe -m PyInstaller ^
   --hidden-import pythoncom ^
   --hidden-import pywintypes ^
   --hidden-import win32crypt ^
+  --hidden-import win32clipboard ^
+  --hidden-import win32gui ^
+  --hidden-import win32con ^
+  --hidden-import win32process ^
+  --hidden-import pywinauto ^
+  --hidden-import pywinauto.application ^
+  --hidden-import pywinauto.keyboard ^
   --hidden-import sqlite3 ^
   --collect-all openpyxl ^
   main.py

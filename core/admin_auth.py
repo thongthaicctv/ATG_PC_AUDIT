@@ -1,16 +1,12 @@
-import base64
-import hashlib
-import hmac
 import json
 import os
 import re
-import secrets
 import time
 import logging
 from datetime import datetime
 from pathlib import Path
 
-ITERATIONS=300000
+from core.auth.password_hasher import hash_password,verify_password as verify_encoded_password
 LOG=logging.getLogger(__name__)
 
 
@@ -35,22 +31,23 @@ def validate_password(password):
 def set_password(password,base_dir=None):
     ok,msg=validate_password(password)
     if not ok: raise ValueError(msg)
-    path=auth_path(base_dir); salt=secrets.token_bytes(32); now=datetime.now().isoformat(timespec="seconds")
-    digest=hashlib.pbkdf2_hmac("sha256",password.encode("utf-8"),salt,ITERATIONS)
+    path=auth_path(base_dir);path.parent.mkdir(parents=True,exist_ok=True);now=datetime.now().isoformat(timespec="seconds")
     old={}
     if path.exists():
         try: old=json.loads(path.read_text(encoding="utf-8"))
         except Exception: old={}
-    payload={"version":1,"algorithm":"pbkdf2_hmac_sha256","iterations":ITERATIONS,"salt_base64":base64.b64encode(salt).decode(),"password_hash_base64":base64.b64encode(digest).decode(),"created_at":old.get("created_at",now),"updated_at":now}
-    path.write_text(json.dumps(payload,indent=2),encoding="utf-8"); return path
+    payload={"version":2,"algorithm":"pbkdf2_sha256","password_hash":hash_password(password),"username":old.get("username","administrator"),"display_name":old.get("display_name","Quản trị viên"),"role":"AGGREGATE_ADMIN","must_change_password":bool(old.get("must_change_password",False)),"created_at":old.get("created_at",now),"updated_at":now}
+    tmp=path.with_suffix(".tmp");tmp.write_text(json.dumps(payload,ensure_ascii=False,indent=2),encoding="utf-8");os.replace(tmp,path);return path
 
 
 def verify_password(password,base_dir=None):
     path=auth_path(base_dir)
     if not path.exists(): return False
     try:
-        data=json.loads(path.read_text(encoding="utf-8")); salt=base64.b64decode(data["salt_base64"]); expected=base64.b64decode(data["password_hash_base64"])
-        actual=hashlib.pbkdf2_hmac("sha256",password.encode("utf-8"),salt,int(data["iterations"])); return hmac.compare_digest(actual,expected)
+        data=json.loads(path.read_text(encoding="utf-8"))
+        if data.get("password_hash"):return verify_encoded_password(password,data["password_hash"])
+        import base64,hashlib,hmac
+        salt=base64.b64decode(data["salt_base64"]);expected=base64.b64decode(data["password_hash_base64"]);actual=hashlib.pbkdf2_hmac("sha256",password.encode("utf-8"),salt,int(data["iterations"]));return hmac.compare_digest(actual,expected)
     except Exception: return False
 
 

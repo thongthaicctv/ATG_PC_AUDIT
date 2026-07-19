@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 LOG = logging.getLogger(__name__)
-SCHEMA_VERSION = "1.0"
+SCHEMA_VERSION = "1.1"
 APP_VERSION = "1.0.0"
 FORMULA_FIELDS = {"asset_code", "assigned_user", "department", "location", "auditor", "note", "switch_name", "switch_port", "network_note"}
 
@@ -33,7 +33,7 @@ def canonical_hash(data: Dict[str, Any]) -> str:
 
 CSV_FIELDS = [
     "schema_version","app_version","export_id","audit_id","exported_at_iso","audit_time_iso","audit_date_display","source_computer_name",
-    "asset_code","assigned_user","department","location","auditor","note",
+    "asset_code","assigned_user","employee_code","department","location","auditor","note",
     "computer_name","manufacturer","model","system_sku","serial_number","uuid","system_type","mainboard_manufacturer","mainboard_product","mainboard_serial","bios_version","bios_release_date",
     "os_name","os_edition","os_display_version","os_version","os_build","os_architecture","os_install_date","system_drive",
     "cpu_name","cpu_manufacturer","cpu_cores","cpu_threads","cpu_max_clock_mhz","ram_total_gb","ram_slots_used",
@@ -67,7 +67,7 @@ def build_csv_record(result) -> Dict[str, Any]:
     record={
         "schema_version":SCHEMA_VERSION,"app_version":APP_VERSION,"export_id":str(uuid.uuid4()),"audit_id":d.get("audit_id") or str(uuid.uuid4()),
         "exported_at_iso":datetime.now().isoformat(timespec="seconds"),"audit_time_iso":d.get("audited_at"),"audit_date_display":m.get("audit_date_display") or m.get("audit_date"),"source_computer_name":c.get("computer_name"),
-        "asset_code":m.get("asset_code"),"assigned_user":m.get("user"),"department":m.get("department"),"location":m.get("location"),"auditor":m.get("auditor"),"note":m.get("notes"),
+        "asset_code":m.get("asset_code"),"assigned_user":m.get("user"),"employee_code":m.get("employee_code"),"department":m.get("department"),"location":m.get("location"),"auditor":m.get("auditor"),"note":m.get("notes"),
         "computer_name":c.get("computer_name") or "UNKNOWN-PC","manufacturer":c.get("manufacturer"),"model":c.get("model"),"system_sku":c.get("system_sku"),"serial_number":c.get("serial_number"),"uuid":c.get("uuid"),"system_type":c.get("system_type"),
         "mainboard_manufacturer":bios.get("mainboard_manufacturer"),"mainboard_product":bios.get("mainboard_product"),"mainboard_serial":bios.get("mainboard_serial"),"bios_version":bios.get("bios_version"),"bios_release_date":bios.get("bios_release_date"),
         "os_name":w.get("edition"),"os_edition":w.get("edition"),"os_display_version":w.get("display_version"),"os_version":w.get("version"),"os_build":w.get("build_number"),"os_architecture":w.get("architecture"),"os_install_date":w.get("installation_date"),"system_drive":w.get("system_drive"),
@@ -88,10 +88,13 @@ def build_csv_record(result) -> Dict[str, Any]:
 
 def default_export_directory() -> Path:
     executable_dir=Path(sys.executable if getattr(sys,"frozen",False) else Path(__file__).resolve().parents[1]).parent if getattr(sys,"frozen",False) else Path(__file__).resolve().parents[1]
-    candidate=executable_dir/"KetQuaThuThap"
+    candidate=executable_dir/"Kết quả kiểm tra";legacy=executable_dir/"KetQuaThuThap"
+    if legacy.is_dir() and not candidate.exists():
+        try:legacy.rename(candidate)
+        except OSError:pass
     try: candidate.mkdir(parents=True,exist_ok=True); test=candidate/".write_test"; test.write_text("ok"); test.unlink(); return candidate
     except OSError:
-        fallback=Path.home()/"Documents"/"ATG_PC_AUDIT"/"KetQuaThuThap"; fallback.mkdir(parents=True,exist_ok=True); return fallback
+        fallback=Path.home()/"Documents"/"ATG_PC_AUDIT"/"Kết quả kiểm tra"; fallback.mkdir(parents=True,exist_ok=True); return fallback
 
 
 def export_csv(result, folder: Path) -> Path:

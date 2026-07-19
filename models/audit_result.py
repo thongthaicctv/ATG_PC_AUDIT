@@ -13,6 +13,7 @@ class AuditResult:
     ram_modules: List[Dict[str, Any]] = field(default_factory=list)
     bios: Dict[str, Any] = field(default_factory=dict)
     disks: List[Dict[str, Any]] = field(default_factory=list)
+    gpu: List[Dict[str, Any]] = field(default_factory=list)
     security: Dict[str, Any] = field(default_factory=dict)
     windows: Dict[str, Any] = field(default_factory=dict)
     windows11: Dict[str, Any] = field(default_factory=dict)

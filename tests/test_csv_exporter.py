@@ -1,6 +1,7 @@
 import csv,tempfile,unittest
 from pathlib import Path
-from core.csv_exporter import build_csv_record,canonical_hash,escape_excel_formula,export_csv
+from unittest.mock import patch
+from core.csv_exporter import build_csv_record,canonical_hash,default_export_directory,escape_excel_formula,export_csv
 from test_export import sample_result
 
 class CsvExporterTests(unittest.TestCase):
@@ -14,5 +15,11 @@ class CsvExporterTests(unittest.TestCase):
         r=sample_result();r.metadata.update(asset_code="=CMD",user="+SUM(1,1)");row=build_csv_record(r)
         self.assertTrue(row["asset_code"].startswith("'="));self.assertNotIn("secret@example.com",row["office_license_details_json"]);self.assertNotIn("SECRET",row["office_license_details_json"])
         self.assertNotIn("AAAAA-BBBBB-CCCCC-DDDDD",str(row))
+    def test_default_folder_renames_legacy_folder(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);exe=root/"ATG_PC_AUDIT.exe";(root/"KetQuaThuThap").mkdir()
+            with patch("core.csv_exporter.sys.frozen",True,create=True),patch("core.csv_exporter.sys.executable",str(exe)):
+                folder=default_export_directory()
+            self.assertEqual(folder,root/"Kết quả kiểm tra");self.assertTrue(folder.is_dir());self.assertFalse((root/"KetQuaThuThap").exists())
 
 if __name__=="__main__":unittest.main()

@@ -2,7 +2,7 @@ import logging
 
 from PyQt5.QtCore import QThread, pyqtSignal
 
-from core.hardware_collector import collect_bios, collect_computer, collect_cpu, collect_disks, collect_ram, collect_security
+from core.hardware_collector import collect_bios, collect_computer, collect_cpu, collect_disks, collect_gpu, collect_ram, collect_security
 from core.win11_checker import evaluate_windows11
 from core.network_collector import collect_network
 from core.windows_license_checker import collect_windows_license
@@ -31,6 +31,7 @@ class AuditWorker(QThread):
             (70, "Đang kiểm tra RAM...", "ram", collect_ram),
             (78, "Đang kiểm tra BIOS...", "bios", collect_bios),
             (84, "Đang kiểm tra ổ đĩa...", "disks", collect_disks),
+            (87, "Đang kiểm tra card đồ họa...", "gpu", collect_gpu),
             (90, "Đang kiểm tra TPM và Secure Boot...", "security", collect_security),
             (95, "Đang kiểm tra Windows...", "windows", collect_windows),
             (97, "Đang kiểm tra card mạng và MAC Address...", "network", collect_network),

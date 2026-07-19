@@ -9,6 +9,7 @@ from typing import Iterable,List
 
 from core.csv_exporter import CSV_FIELDS,SCHEMA_VERSION,canonical_hash,unescape_excel_formula,FORMULA_FIELDS
 from models.import_result import ImportPreview
+from core.profile_validator import valid_employee_code
 
 REQUIRED={"schema_version","export_id","audit_id","asset_code","computer_name","record_sha256"}
 JSON_FIELDS={"ram_details_json","disks_details_json","gpu_details_json","network_adapters_json","windows_license_details_json","office_license_details_json","win11_checks_json"}
@@ -44,7 +45,11 @@ def _validate(path,raw,database,warning):
     record=dict(raw)
     for key in FORMULA_FIELDS:record[key]=unescape_excel_formula(record.get(key,""))
     errors=[]
-    if record.get("schema_version")!=SCHEMA_VERSION:errors.append("Sai schema")
+    schema=record.get("schema_version")
+    if schema not in ("1.0",SCHEMA_VERSION):errors.append("Sai schema")
+    if schema=="1.0" and not record.get("employee_code"):record["employee_code"]="";warning += "LEGACY_MISSING_EMPLOYEE_CODE; Bản ghi cũ chưa có Mã nhân viên. "
+    if schema==SCHEMA_VERSION and not record.get("employee_code"):errors.append("Thiếu Mã nhân viên")
+    if record.get("employee_code") and not valid_employee_code(record["employee_code"]):errors.append("Mã nhân viên không hợp lệ")
     if not record.get("asset_code") or not record.get("computer_name"):errors.append("Không đủ dữ liệu nhận dạng")
     if not any(record.get(x) for x in ("serial_number","uuid","asset_code")):errors.append("Không đủ dữ liệu nhận dạng")
     for key in JSON_FIELDS:

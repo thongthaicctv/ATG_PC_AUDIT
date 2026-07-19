@@ -12,7 +12,7 @@ from models.audit_result import AuditResult
 
 def sample_result(asset="ATG-001", serial="SERIAL-1", ip="10.10.1.20"):
     return AuditResult(
-        metadata={"asset_code": asset, "user": "User", "department": "IT", "location": "Tầng 2", "audit_date": "14/07/2026"},
+        metadata={"asset_code": asset, "user": "User", "employee_code": "NV001", "department": "IT", "location": "Tầng 2", "auditor": "Tester", "audit_date": "14/07/2026"},
         computer={"computer_name": "PC-01", "serial_number": serial, "uuid": "UUID-1"},
         cpu={"name": "CPU"}, ram_summary={"total_gb": 16}, ram_modules=[{"slot": "DIMM0", "capacity_gb": 16}],
         disks=[{"disk_index": 0, "model": "SSD", "disk_type": "SSD", "partition_style": "GPT", "capacity_gb": 256, "is_system": True}],

@@ -1,0 +1,46 @@
+{
+  "app_name": "ATG PC AUDIT",
+  "phase": 12,
+  "result_directory": "KetQuaKiemTra",
+  "language": "vi-VN",
+  "app_version": "1.0.0",
+  "auto_export_csv": true,
+  "license": {
+    "api_url": "https://docs.google.com/spreadsheets/d/1f5GaVe2Ogw5NCYAhAvVCB9HINhPptqRf3a2oJpni8II/gviz/tq?tqx=out:json&sheet=Sheet1",
+    "product_code": "ATG_PC_AUDIT",
+    "feature_code": "AGGREGATE",
+    "request_timeout_seconds": 15,
+    "offline_grace_days": 30,
+    "refresh_hours": 12
+  },
+  "google_sync": {
+    "enabled": true,
+    "web_app_url": "https://script.google.com/macros/s/AKfycbzE7xJNRoJtwH9-21L_mDahp-iUJv9NAiRVVCiQ88Wa9R55r5D88jWHsGKaziWSlVMr/exec",
+    "api_version": "1",
+    "schema_version": "1.1",
+    "timeout_seconds": 20,
+    "max_response_mb": 10,
+    "page_size": 200,
+    "auto_submit_after_scan": true,
+    "retry_queue_on_startup": true,
+    "auto_sync_on_aggregate_unlock": true,
+    "aggregate_sync_interval_minutes": 10
+  },
+  "backup": {
+    "backup_enabled": true,
+    "backup_on_exit": false,
+    "backup_before_sync": false,
+    "backup_after_sync": true,
+    "backup_interval_hours": 24,
+    "backup_keep_count": 30,
+    "backup_keep_days": 90
+  },
+  "send_settings": {
+    "remember_zalo_phone": false,
+    "zalo_phone": "",
+    "remember_admin_email": false,
+    "admin_email": "",
+    "default_send_method": "LOCAL",
+    "zalo_assisted_mode": true
+  }
+}

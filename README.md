@@ -1,5 +1,11 @@
 # ATG PC AUDIT
 
+## Phase 11 – Đồng bộ Google Apps Script
+
+Ứng dụng gửi một payload JSON qua HTTPS tới Google Apps Script Web App, có DEVICE_ID, device secret bảo vệ bằng Windows DPAPI, request chống phát lại, SHA-256 dữ liệu, queue ngoại tuyến và đồng bộ gia tăng `change_seq` về SQLite. CSV vẫn là phương án dự phòng.
+
+Hướng dẫn triển khai server nằm tại `server/google_apps_script/README.md`. URL production `/exec` được cấu hình trong `config/app_config.json` tại `google_sync.web_app_url`; không lưu Google credential hoặc device secret trong file cấu hình.
+
 Ứng dụng sử dụng bộ nhận diện trong `assets/logo.png`; icon cửa sổ và file EXE nằm tại `assets/app.ico`. Script `build_exe.bat` tự nhúng icon, logo, cấu hình và metadata phiên bản Windows vào bản onefile.
 
 Ứng dụng Windows nội bộ để thu thập thông tin máy tính trước khi cài lại hệ điều hành và phục vụ quy hoạch IP. Bản hiện tại hoàn thành **Phase 1 đến Phase 7** theo tài liệu yêu cầu.
@@ -118,3 +124,7 @@ C:\Python310\python.exe -m pip install pyinstaller
 ```
 
 Kết quả: `dist\ATG_PC_AUDIT.exe`.
+
+## Phase 8 - Gửi dữ liệu cho quản trị
+
+Nút **GỬI DỮ LIỆU QUẢN TRỊ** cung cấp ba phương thức: lưu bản sao CSV, chuẩn bị gửi qua Zalo Desktop hoặc mở Gmail trong trình duyệt mặc định. Ứng dụng tự tạo CSV khi cần, chuẩn hóa số điện thoại Việt Nam, kiểm tra email cơ bản, chọn sẵn file trong Explorer và lưu lịch sử chuẩn bị gửi cục bộ. Ứng dụng không tự chọn người nhận khi không chắc chắn, không tự đính kèm trên Gmail Web và tuyệt đối không tự bấm Gửi.
